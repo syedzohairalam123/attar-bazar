@@ -1,0 +1,139 @@
+'use client'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { Search, ShoppingBag, Menu, X, User, ChevronDown, LogOut, LayoutDashboard, Shield } from 'lucide-react'
+import { useCartStore, useAuthStore, resetAllClientState } from '@/lib/store'
+import { createClient } from '@/lib/supabase/client'
+
+export function Navbar() {
+  const [scrolled, setScrolled] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [siteName, setSiteName] = useState('Attar Bazaar')
+  const [loggingOut, setLoggingOut] = useState(false)
+  const pathname = usePathname()
+  const router = useRouter()
+  const { count, openCart } = useCartStore()
+  const { user } = useAuthStore()
+  const cartCount = count()
+  const supabase = createClient()
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', onScroll)
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    supabase.from('settings').select('value').eq('key', 'site_name').maybeSingle()
+      .then(({ data }) => { if (data?.value) setSiteName(data.value) }, () => {})
+  }, [])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`)
+      setSearchOpen(false)
+      setSearchQuery('')
+    }
+  }
+
+  // Bulletproof global logout: destroy the Supabase session, wipe every
+  // piece of client-side persisted state (auth + cart), and force a
+  // full page reload to /auth/login so nothing can "fall back" to a
+  // stale cached session afterward.
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    await supabase.auth.signOut()
+    resetAllClientState()
+    window.location.href = '/auth/login'
+  }
+
+  const navLinks = [
+    { href: '/', label: 'Home' }, { href: '/products', label: 'Browse' },
+    { href: '/about', label: 'About' }, { href: '/contact', label: 'Contact' },
+  ]
+
+  return (
+    <>
+      <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
+        style={scrolled ? { background: 'rgba(13,11,31,0.97)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(201,168,76,0.1)', boxShadow: '0 4px 30px rgba(0,0,0,0.5)' } : {}}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 lg:h-20">
+            <Link href="/" className="flex items-center gap-3 group flex-shrink-0">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', boxShadow: '0 0 15px rgba(201,168,76,0.3)' }}>
+                <span className="font-bold text-sm" style={{ color: '#06040E', fontFamily: 'Cinzel, serif' }}>A</span>
+              </div>
+              <span className="text-xl font-bold hidden sm:block" style={{ fontFamily: 'Georgia, serif', background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{siteName}</span>
+            </Link>
+
+            <nav className="hidden lg:flex items-center gap-8">
+              {navLinks.map(link => (
+                <Link key={link.href} href={link.href} className="text-sm font-medium transition-colors duration-200 relative group" style={{ color: pathname === link.href ? '#C9A84C' : '#A89F8F' }}>
+                  {link.label}
+                  <span className="absolute -bottom-1 left-0 h-px transition-all duration-300" style={{ width: pathname === link.href ? '100%' : '0', background: '#C9A84C' }} />
+                </Link>
+              ))}
+            </nav>
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button onClick={() => setSearchOpen(true)} className="w-9 h-9 rounded-full flex items-center justify-center transition-all" style={{ border: '1px solid rgba(201,168,76,0.2)', color: '#A89F8F' }}><Search size={16} /></button>
+              <button onClick={openCart} className="relative w-9 h-9 rounded-full flex items-center justify-center transition-all" style={{ border: '1px solid rgba(201,168,76,0.2)', color: '#A89F8F' }}>
+                <ShoppingBag size={16} />
+                {cartCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 text-[10px] font-bold rounded-full flex items-center justify-center" style={{ background: '#C9A84C', color: '#06040E' }}>{cartCount > 9 ? '9+' : cartCount}</span>}
+              </button>
+
+              {user ? (
+                <div className="relative">
+                  <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all" style={{ border: '1px solid rgba(201,168,76,0.2)' }}>
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'rgba(201,168,76,0.2)' }}><User size={12} style={{ color: '#C9A84C' }} /></div>
+                    <span className="text-sm hidden sm:block max-w-[80px] truncate" style={{ color: '#F5F0E8' }}>{user.full_name?.split(' ')[0] ?? user.email.split('@')[0]}</span>
+                    <ChevronDown size={12} style={{ color: '#A89F8F' }} />
+                  </button>
+                  {userMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                      <div className="absolute right-0 top-full mt-2 w-48 rounded-xl overflow-hidden z-50" style={{ background: 'rgba(23,21,46,0.98)', border: '1px solid rgba(201,168,76,0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                        <div className="p-2">
+                          <Link href="/account" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all" style={{ color: '#A89F8F' }}><LayoutDashboard size={14} /> My Account</Link>
+                          <button onClick={handleLogout} disabled={loggingOut} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all disabled:opacity-50" style={{ color: '#A89F8F' }}><LogOut size={14} /> {loggingOut ? 'Signing out...' : 'Sign Out'}</button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <Link href="/auth/login" className="px-4 py-2 rounded-full text-sm font-semibold hidden sm:flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E' }}><User size={14} /> Sign In</Link>
+              )}
+              <button onClick={() => setMobileOpen(!mobileOpen)} className="lg:hidden w-9 h-9 rounded-full flex items-center justify-center" style={{ border: '1px solid rgba(201,168,76,0.2)', color: '#A89F8F' }}>{mobileOpen ? <X size={16} /> : <Menu size={16} />}</button>
+            </div>
+          </div>
+        </div>
+        {mobileOpen && (
+          <div className="lg:hidden px-4 py-4" style={{ background: 'rgba(13,11,31,0.98)', borderTop: '1px solid rgba(201,168,76,0.1)' }}>
+            <nav className="flex flex-col gap-1">
+              {navLinks.map(link => (<Link key={link.href} href={link.href} onClick={() => setMobileOpen(false)} className="px-4 py-3 rounded-xl text-sm font-medium transition-all" style={pathname === link.href ? { background: 'rgba(201,168,76,0.1)', color: '#C9A84C' } : { color: '#A89F8F' }}>{link.label}</Link>))}
+              {!user ? (<Link href="/auth/login" onClick={() => setMobileOpen(false)} className="px-4 py-3 rounded-xl text-sm font-semibold text-center mt-2" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E' }}>Sign In</Link>)
+                : (<button onClick={() => { handleLogout(); setMobileOpen(false) }} className="px-4 py-3 rounded-xl text-sm font-medium text-left" style={{ color: '#A89F8F' }}>Sign Out</button>)}
+            </nav>
+          </div>
+        )}
+      </header>
+
+      {searchOpen && (
+        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20 px-4" style={{ background: 'rgba(6,4,14,0.92)', backdropFilter: 'blur(20px)' }} onClick={e => e.target === e.currentTarget && setSearchOpen(false)}>
+          <div className="w-full max-w-2xl">
+            <form onSubmit={handleSearch} className="relative">
+              <input autoFocus type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Escape' && setSearchOpen(false)} placeholder="Search perfumes, brands, attars..." className="w-full px-6 py-5 pr-14 text-lg rounded-2xl focus:outline-none" style={{ background: '#17152E', border: '1px solid rgba(201,168,76,0.3)', color: '#F5F0E8' }} />
+              <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E' }}><Search size={18} /></button>
+            </form>
+            <p className="text-center text-sm mt-4" style={{ color: '#A89F8F' }}>Press ESC to close</p>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}

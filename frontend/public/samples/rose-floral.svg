@@ -1,0 +1,16 @@
+<svg width="500" height="600" viewBox="0 0 500 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3d1f2b"/><stop offset="100%" stop-color="#D46A85"/></linearGradient>
+    <linearGradient id="bottle" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F5D0DC"/><stop offset="100%" stop-color="#D46A85"/></linearGradient>
+  </defs>
+  <rect width="500" height="600" fill="url(#bg)"/>
+  <circle cx="250" cy="260" r="180" fill="rgba(255,255,255,0.05)"/>
+  <rect x="215" y="90" width="70" height="45" rx="8" fill="#C9A84C"/>
+  <rect x="225" y="70" width="50" height="30" rx="6" fill="#E8CC7A"/>
+  <path d="M190 135 L310 135 L330 210 L330 480 Q330 500 310 500 L190 500 Q170 500 170 480 L170 210 Z" fill="url(#bottle)" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+  <rect x="200" y="260" width="100" height="90" rx="4" fill="rgba(255,255,255,0.92)"/>
+  <text x="250" y="302" text-anchor="middle" font-family="Georgia, serif" font-size="34" font-weight="700" fill="#3d1f2b">N</text>
+  <text x="250" y="325" text-anchor="middle" font-family="Georgia, serif" font-size="10" letter-spacing="1.5" fill="#3d1f2b" opacity="0.7">FLORAL CONCENTRATE</text>
+  <text x="250" y="560" text-anchor="middle" font-family="Georgia, serif" font-size="20" font-weight="600" fill="#F5F0E8">Natural Oils</text>
+  <text x="250" y="580" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" letter-spacing="1" fill="#C9A84C">ROSE FLORAL</text>
+</svg>
