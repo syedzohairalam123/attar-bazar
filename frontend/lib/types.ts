@@ -22,11 +22,16 @@ export type Profile = {
   full_name: string | null
   phone: string | null
   avatar_url: string | null
-  role: Role
+  role: Role // Purana system break na ho is liye ise rehne diya hai
   city: string | null
   whatsapp: string | null
   is_verified: boolean
   created_at: string
+  
+  // Naye multi-role flags
+  is_buyer: boolean
+  is_seller: boolean
+  is_admin: boolean
 }
 
 export type Category = {

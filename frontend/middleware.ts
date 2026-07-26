@@ -4,9 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Runs on every navigation. Two jobs:
 // 1. Refresh the Supabase auth cookie so server and browser always agree
 //    on who's logged in (this is what fixes "session lost during checkout").
-// 2. Enforce role-based access: sellers are fully isolated from the
-//    storefront, buyers/guests can't reach /seller or /admin, and nobody
-//    reaches a protected page without being logged in first.
+// 2. Enforce role-based access using the new multi-role (boolean) flags.
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers } })
 
@@ -34,20 +32,32 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
 
-  let role: string | null = null
+  // Fetch new boolean flags instead of a single string role
+  let profile = { is_buyer: true, is_seller: false, is_admin: false }
+  
   if (user) {
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-    role = profile?.role ?? 'buyer'
+    const { data } = await supabase
+      .from('profiles')
+      .select('is_buyer, is_seller, is_admin')
+      .eq('id', user.id)
+      .maybeSingle()
+      
+    if (data) {
+      profile = {
+        is_buyer: data.is_buyer ?? true, // Default to true for older users
+        is_seller: data.is_seller ?? false,
+        is_admin: data.is_admin ?? false
+      }
+    }
   }
 
   const isSellerPath = path.startsWith('/seller')
+  const isSellerSetup = path === '/seller/setup'
   const isAdminPath = path.startsWith('/admin')
   const isAccountPath = path.startsWith('/account')
   const isCheckoutPath = path.startsWith('/checkout')
   const isAuthPath = path.startsWith('/auth')
   const isForgotOrUnsub = path.startsWith('/auth/forgot') || path.startsWith('/auth/unsubscribe') || path.startsWith('/auth/reset')
-  // Public info pages stay open to everyone, including sellers — only
-  // the actual browse/buy flow is blocked for seller accounts.
   const isStorefrontBuyPath = path === '/' || path.startsWith('/products') || isCheckoutPath || path.startsWith('/cart')
 
   // 1. Protected areas require login
@@ -57,22 +67,41 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  if (user && role) {
-    // 2. Role-gated areas
-    if (isSellerPath && role !== 'seller' && role !== 'admin') {
+  if (user) {
+    // 2. Role-gated areas based on flags
+    // Admin can access everything
+    if (isAdminPath && !profile.is_admin) {
       return NextResponse.redirect(new URL('/', request.url))
     }
-    if (isAdminPath && role !== 'admin') {
-      return NextResponse.redirect(new URL('/', request.url))
+    
+    // Seller area requires seller flag OR admin — BUT /seller/setup is open to any logged-in user
+    if (isSellerPath && !isSellerSetup && !profile.is_seller && !profile.is_admin) {
+      return NextResponse.redirect(new URL('/seller/setup', request.url))
     }
-    // 3. Sellers cannot browse or buy on the storefront — full isolation
-    if (role === 'seller' && isStorefrontBuyPath) {
-      return NextResponse.redirect(new URL('/seller', request.url))
+    
+    // 3. Storefront Isolation
+    // ONLY block from storefront if they are explicitly NOT a buyer (e.g., they only chose to be a seller)
+    // If they are both (is_buyer && is_seller), they can access this fine.
+    // Admin can also access storefront
+    if (!profile.is_buyer && !profile.is_admin && isStorefrontBuyPath) {
+      // If user is seller-only, redirect to seller dashboard
+      if (profile.is_seller) {
+        return NextResponse.redirect(new URL('/seller', request.url))
+      }
+      // Otherwise, redirect to account to activate buyer role
+      return NextResponse.redirect(new URL('/account', request.url))
     }
-    // 4. Already logged in + visiting login/register -> send to the right home
+
+    // 4. Already logged in + visiting login/register -> send to their primary area
     if (isAuthPath && !isForgotOrUnsub && (path === '/auth/login' || path === '/auth/register')) {
-      const target = role === 'admin' ? '/admin' : role === 'seller' ? '/seller' : '/'
-      return NextResponse.redirect(new URL(target, request.url))
+      // Redirect to the most appropriate area based on their roles
+      if (profile.is_admin) {
+        return NextResponse.redirect(new URL('/admin', request.url))
+      } else if (profile.is_seller) {
+        return NextResponse.redirect(new URL('/seller', request.url))
+      } else {
+        return NextResponse.redirect(new URL('/', request.url))
+      }
     }
   }
 

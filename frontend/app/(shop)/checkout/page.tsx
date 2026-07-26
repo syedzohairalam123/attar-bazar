@@ -33,11 +33,24 @@ export default function CheckoutPage() {
     </div>
   )
 
-  // Defense in depth — middleware already blocks sellers from reaching
+  // Defense in depth — middleware already blocks users without buyer access from reaching
   // this page, but this guards against any stale client-side navigation.
-  if (user.role === 'seller') return (
+  // Multi-role support: Users with is_buyer=true can purchase regardless of other roles
+  if (!user.is_buyer) return (
     <div className="pt-32 pb-20 max-w-xl mx-auto px-4 text-center">
-      <div className="glass-card rounded-3xl p-12"><h2 className="text-3xl font-bold text-[#F5F0E8] mb-4" style={{ fontFamily: 'Georgia, serif' }}>Sellers Cannot Purchase</h2><p className="text-[#A89F8F] mb-6">Please log out and sign in with a Buyer account to place an order.</p><Link href="/seller" className="px-8 py-3 rounded-xl font-semibold" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E' }}>Back to Seller Dashboard</Link></div>
+      <div className="glass-card rounded-3xl p-12">
+        <h2 className="text-3xl font-bold text-[#F5F0E8] mb-4" style={{ fontFamily: 'Georgia, serif' }}>Buyer Access Required</h2>
+        <p className="text-[#A89F8F] mb-6">
+          {user.is_seller 
+            ? 'You currently have Seller access. To place orders, please activate Buyer role on your account.'
+            : 'Please sign in with a Buyer account to place an order.'}
+        </p>
+        {user.is_seller ? (
+          <Link href="/account" className="px-8 py-3 rounded-xl font-semibold inline-block" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E' }}>Activate Buyer Role</Link>
+        ) : (
+          <Link href="/auth/login?redirect=/checkout" className="px-8 py-3 rounded-xl font-semibold inline-block" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E' }}>Sign In</Link>
+        )}
+      </div>
     </div>
   )
 

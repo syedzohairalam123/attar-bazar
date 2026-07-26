@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/lib/store'
 import { ORDER_STATUS_LABEL, OrderStatus } from '@/lib/types'
-import { TrendingUp, Package, ShoppingBag, Clock, Loader2, Plus, Wifi } from 'lucide-react'
+import { TrendingUp, Package, ShoppingBag, Clock, Loader2, Plus, Wifi, ArrowRight } from 'lucide-react'
 
 export default function SellerDashboard() {
   const { user } = useAuthStore()
@@ -55,45 +55,92 @@ export default function SellerDashboard() {
   return (
     <div className="p-5 sm:p-8">
       <div className="flex items-center justify-between mb-8">
-        <div><h1 className="text-3xl font-bold" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>Seller Dashboard</h1><p className="text-sm mt-1" style={{ color: '#A89F8F' }}>Real-time overview of your shop</p></div>
-        {liveUpdated && <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ background: 'rgba(37,211,102,0.15)', color: '#25D366' }}><Wifi size={12} /> Live update</span>}
+        <div>
+          <h1 className="text-3xl font-bold" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>Seller Dashboard</h1>
+          <p className="text-sm mt-1" style={{ color: '#A89F8F' }}>Real-time overview of your shop</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {liveUpdated && (
+            <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ background: 'rgba(37,211,102,0.15)', color: '#25D366' }}>
+              <Wifi size={12} /> Live update
+            </span>
+          )}
+          {(user as any)?.is_buyer && (
+            <Link href="/" className="text-xs px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all hover:opacity-80" style={{ borderColor: 'rgba(201,168,76,0.3)', color: '#C9A84C' }}>
+              <ShoppingBag size={12} /> Buyer <ArrowRight size={12} />
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {statCards.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="glass-card rounded-2xl p-5"><Icon size={20} style={{ color }} className="mb-3" /><p className="font-bold text-xl lg:text-2xl" style={{ color, fontFamily: 'Georgia, serif' }}>{loading ? '—' : value}</p><p className="text-xs mt-1" style={{ color: '#A89F8F' }}>{label}</p></div>
+          <div key={label} className="glass-card rounded-2xl p-5">
+            <Icon size={20} style={{ color }} className="mb-3" />
+            <p className="font-bold text-xl lg:text-2xl" style={{ color, fontFamily: 'Georgia, serif' }}>{loading ? '—' : value}</p>
+            <p className="text-xs mt-1" style={{ color: '#A89F8F' }}>{label}</p>
+          </div>
         ))}
       </div>
 
       <div className="flex gap-3 mb-8">
-        <Link href="/seller/products/new" className="px-5 py-3 rounded-xl font-semibold flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E' }}><Plus size={16} /> Add Product</Link>
-        <Link href="/seller/orders" className="px-5 py-3 rounded-xl font-semibold border" style={{ borderColor: 'rgba(201,168,76,0.3)', color: '#C9A84C' }}>View Orders</Link>
+        <Link href="/seller/products/new" className="px-5 py-3 rounded-xl font-semibold flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E' }}>
+          <Plus size={16} /> Add Product
+        </Link>
+        <Link href="/seller/orders" className="px-5 py-3 rounded-xl font-semibold border" style={{ borderColor: 'rgba(201,168,76,0.3)', color: '#C9A84C' }}>
+          View Orders
+        </Link>
       </div>
 
-      {loading ? <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin" style={{ color: '#C9A84C' }} /></div> : (
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 size={28} className="animate-spin" style={{ color: '#C9A84C' }} />
+        </div>
+      ) : (
         <div className="grid lg:grid-cols-2 gap-6">
           <div className="glass-card rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>Recent Orders</h3><Link href="/seller/orders" className="text-xs" style={{ color: '#C9A84C' }}>View All →</Link></div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>Recent Orders</h3>
+              <Link href="/seller/orders" className="text-xs" style={{ color: '#C9A84C' }}>View All →</Link>
+            </div>
             <div className="space-y-3">
-              {orders.length === 0 ? <p className="text-sm text-center py-6" style={{ color: '#A89F8F' }}>No orders yet</p> : orders.slice(0, 5).map(o => (
-                <div key={o.id} className="flex items-center gap-3 py-2 border-b last:border-0" style={{ borderColor: 'rgba(201,168,76,0.08)' }}>
-                  <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate" style={{ color: '#F5F0E8' }}>{o.perfumes?.brand} — {o.perfumes?.title}</p><p className="text-xs" style={{ color: '#A89F8F' }}>{new Date(o.created_at).toLocaleDateString('en-PK')}</p></div>
-                  <p className="font-bold text-sm" style={{ color: '#C9A84C' }}>Rs {o.total_price?.toLocaleString()}</p>
-                  <span className="text-xs px-2 py-0.5 rounded-full badge-like-new">{ORDER_STATUS_LABEL[o.status as OrderStatus] ?? o.status}</span>
-                </div>
-              ))}
+              {orders.length === 0 ? (
+                <p className="text-sm text-center py-6" style={{ color: '#A89F8F' }}>No orders yet</p>
+              ) : (
+                orders.slice(0, 5).map(o => (
+                  <div key={o.id} className="flex items-center gap-3 py-2 border-b last:border-0" style={{ borderColor: 'rgba(201,168,76,0.08)' }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: '#F5F0E8' }}>{o.perfumes?.brand} — {o.perfumes?.title}</p>
+                      <p className="text-xs" style={{ color: '#A89F8F' }}>{new Date(o.created_at).toLocaleDateString('en-PK')}</p>
+                    </div>
+                    <p className="font-bold text-sm" style={{ color: '#C9A84C' }}>Rs {o.total_price?.toLocaleString()}</p>
+                    <span className="text-xs px-2 py-0.5 rounded-full badge-like-new">{ORDER_STATUS_LABEL[o.status as OrderStatus] ?? o.status}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
+
           <div className="glass-card rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>My Listings</h3><Link href="/seller/products" className="text-xs" style={{ color: '#C9A84C' }}>Manage →</Link></div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>My Listings</h3>
+              <Link href="/seller/products" className="text-xs" style={{ color: '#C9A84C' }}>Manage →</Link>
+            </div>
             <div className="space-y-3">
-              {listings.length === 0 ? <p className="text-sm text-center py-6" style={{ color: '#A89F8F' }}>No listings yet</p> : listings.slice(0, 5).map(l => (
-                <div key={l.id} className="flex items-center gap-3 py-2 border-b last:border-0" style={{ borderColor: 'rgba(201,168,76,0.08)' }}>
-                  <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate" style={{ color: '#F5F0E8' }}>{l.brand} — {l.title}</p><p className="text-xs" style={{ color: '#A89F8F' }}>{l.views ?? 0} views</p></div>
-                  <p className="font-bold text-sm" style={{ color: '#C9A84C' }}>Rs {l.price?.toLocaleString()}</p>
-                  <span className={l.status === 'active' ? 'badge-new' : 'badge-used'}>{l.status}</span>
-                </div>
-              ))}
+              {listings.length === 0 ? (
+                <p className="text-sm text-center py-6" style={{ color: '#A89F8F' }}>No listings yet</p>
+              ) : (
+                listings.slice(0, 5).map(l => (
+                  <div key={l.id} className="flex items-center gap-3 py-2 border-b last:border-0" style={{ borderColor: 'rgba(201,168,76,0.08)' }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: '#F5F0E8' }}>{l.brand} — {l.title}</p>
+                      <p className="text-xs" style={{ color: '#A89F8F' }}>{l.views ?? 0} views</p>
+                    </div>
+                    <p className="font-bold text-sm" style={{ color: '#C9A84C' }}>Rs {l.price?.toLocaleString()}</p>
+                    <span className={l.status === 'active' ? 'badge-new' : 'badge-used'}>{l.status}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
