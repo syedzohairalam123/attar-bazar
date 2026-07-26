@@ -1,11 +1,12 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Package, ShoppingBag, LogOut, Menu, X } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { LayoutDashboard, Package, ShoppingBag, LogOut, Menu, X, Store, ShoppingBag as ShopIcon, Shield, ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { resetAllClientState, useAuthStore } from '@/lib/store'
 import { Toaster } from 'react-hot-toast'
+import toast from 'react-hot-toast'
 
 // Fully isolated from the storefront: no Navbar, no Footer, no
 // CartDrawer. A seller lives entirely inside this shell — middleware
@@ -13,16 +14,55 @@ import { Toaster } from 'react-hot-toast'
 // "/checkout" at all, so this layout is the only UI they ever see.
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const { user } = useAuthStore()
+  const router = useRouter()
+  const { user, setActiveRole, updateUserRoles } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [upgradingRole, setUpgradingRole] = useState(false)
   const supabase = createClient()
+  
+  const u = user as any
 
   const handleLogout = async () => {
     setLoggingOut(true)
     await supabase.auth.signOut()
     resetAllClientState()
     window.location.href = '/auth/login'
+  }
+
+  const handleSwitchRole = (targetRole: 'buyer' | 'seller' | 'admin') => {
+    setActiveRole(targetRole)
+    
+    const targetPath = targetRole === 'seller' ? '/seller' : targetRole === 'admin' ? '/admin' : '/'
+    window.location.href = targetPath
+  }
+
+  const handleBecomeBuyer = async () => {
+    setUpgradingRole(true)
+
+    try {
+      // Try SECURITY DEFINER RPC first (bypasses RLS)
+      let success = false
+      try {
+        const { error: rpcError } = await supabase.rpc('activate_buyer_role' as any)
+        if (!rpcError) success = true
+      } catch { /* RPC not available */ }
+
+      if (!success) {
+        const { error } = await supabase.from('profiles').update({ is_buyer: true }).eq('id', u.id)
+        if (error) throw error
+        success = true
+      }
+
+      updateUserRoles({ is_buyer: true })
+      toast.success('Buyer account activated successfully!')
+      setActiveRole('buyer')
+      setTimeout(() => { window.location.href = '/' }, 500)
+    } catch (err: any) {
+      toast.error('Could not activate buyer account. Please run the SQL migration in Supabase.')
+    } finally {
+      setUpgradingRole(false)
+    }
   }
 
   const navItems = [
@@ -47,7 +87,55 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
             return (<Link key={href} href={href} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all" style={active ? { background: 'rgba(201,168,76,0.12)', color: '#C9A84C' } : { color: '#A89F8F' }}><Icon size={16} /> {label}</Link>)
           })}
         </nav>
+        
+        {/* ROLE SWITCHING SECTION */}
         <div className="pt-4 mt-4" style={{ borderTop: '1px solid rgba(201,168,76,0.1)' }}>
+          <p className="text-xs uppercase tracking-wider mb-2 px-3" style={{ color: '#C9A84C' }}>Switch Role</p>
+          
+          {/* Buyer Role */}
+          {u?.is_buyer !== false ? (
+            <button 
+              onClick={() => handleSwitchRole('buyer')}
+              disabled={u?.activeRole === 'buyer'}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
+              style={{ color: u?.activeRole === 'buyer' ? '#C9A84C' : '#A89F8F' }}
+            >
+              <div className="flex items-center gap-3">
+                <ShopIcon size={16} className={u?.activeRole === 'buyer' ? 'text-[#C9A84C]' : 'text-amber-400'} />
+                <span>View Buyer Storefront</span>
+              </div>
+              {u?.activeRole === 'buyer' && <span className="text-xs" style={{ color: '#C9A84C' }}>Active</span>}
+            </button>
+          ) : (
+            <button 
+              onClick={handleBecomeBuyer}
+              disabled={upgradingRole}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
+              style={{ color: '#C9A84C' }}
+            >
+              <ShopIcon size={16} />
+              <span>{upgradingRole ? 'Activating...' : '+ Become a Buyer'}</span>
+            </button>
+          )}
+
+          {/* Admin Role */}
+          {u?.is_admin && (
+            <button 
+              onClick={() => handleSwitchRole('admin')}
+              disabled={u?.activeRole === 'admin'}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
+              style={{ color: u?.activeRole === 'admin' ? '#C9A84C' : '#A89F8F' }}
+            >
+              <div className="flex items-center gap-3">
+                <Shield size={16} />
+                <span>Admin Portal</span>
+              </div>
+              {u?.activeRole === 'admin' && <span className="text-xs" style={{ color: '#C9A84C' }}>Active</span>}
+            </button>
+          )}
+
+          <div className="h-[1px] my-3" style={{ background: 'rgba(201,168,76,0.1)' }} />
+          
           <p className="text-xs px-3 mb-2 truncate" style={{ color: '#A89F8F' }}>{user?.email}</p>
           <button onClick={handleLogout} disabled={loggingOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50" style={{ color: '#A89F8F' }}><LogOut size={16} /> {loggingOut ? 'Signing out...' : 'Sign Out'}</button>
         </div>
@@ -64,7 +152,54 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
             const active = exact ? pathname === href : pathname.startsWith(href)
             return (<Link key={href} href={href} onClick={() => setMobileOpen(false)} className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium" style={active ? { background: 'rgba(201,168,76,0.12)', color: '#C9A84C' } : { color: '#A89F8F' }}><Icon size={16} /> {label}</Link>)
           })}
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium mt-2" style={{ color: '#A89F8F' }}><LogOut size={16} /> Sign Out</button>
+          
+          <div className="h-[1px] my-3" style={{ background: 'rgba(201,168,76,0.1)' }} />
+          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: '#C9A84C' }}>Switch Role</p>
+          
+          {/* Buyer Role */}
+          {u?.is_buyer !== false ? (
+            <button 
+              onClick={() => handleSwitchRole('buyer')}
+              disabled={u?.activeRole === 'buyer'}
+              className="w-full flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium disabled:opacity-50"
+              style={{ color: u?.activeRole === 'buyer' ? '#C9A84C' : '#A89F8F' }}
+            >
+              <div className="flex items-center gap-3">
+                <ShopIcon size={16} className={u?.activeRole === 'buyer' ? 'text-[#C9A84C]' : 'text-amber-400'} />
+                <span>View as Buyer</span>
+              </div>
+              {u?.activeRole === 'buyer' && <span className="text-xs" style={{ color: '#C9A84C' }}>Active</span>}
+            </button>
+          ) : (
+            <button 
+              onClick={handleBecomeBuyer}
+              disabled={upgradingRole}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium disabled:opacity-50"
+              style={{ color: '#C9A84C' }}
+            >
+              <ShopIcon size={16} />
+              <span>{upgradingRole ? 'Activating...' : '+ Become a Buyer'}</span>
+            </button>
+          )}
+
+          {/* Admin Role */}
+          {u?.is_admin && (
+            <button 
+              onClick={() => handleSwitchRole('admin')}
+              disabled={u?.activeRole === 'admin'}
+              className="w-full flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium disabled:opacity-50"
+              style={{ color: u?.activeRole === 'admin' ? '#C9A84C' : '#A89F8F' }}
+            >
+              <div className="flex items-center gap-3">
+                <Shield size={16} />
+                <span>Admin Portal</span>
+              </div>
+              {u?.activeRole === 'admin' && <span className="text-xs" style={{ color: '#C9A84C' }}>Active</span>}
+            </button>
+          )}
+
+          <div className="h-[1px] my-3" style={{ background: 'rgba(201,168,76,0.1)' }} />
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium" style={{ color: '#A89F8F' }}><LogOut size={16} /> Sign Out</button>
         </div>
       )}
 

@@ -33,16 +33,31 @@ export default function RegisterPage() {
       if (error) throw error
       if (!data.user) throw new Error('Signup failed — please try again')
 
+      const isBuyer = role === 'buyer'
+      const isSeller = role === 'seller'
+
       const { error: profileError } = await supabase.from('profiles').upsert({
         id: data.user.id, full_name: fullName, phone: form.phone.trim().slice(0, 20),
         whatsapp: (form.whatsapp || form.phone).trim().slice(0, 20), city: form.city.trim().slice(0, 100) || null, role,
+        is_buyer: isBuyer,
+        is_seller: isSeller,
+        is_admin: false,
       })
       if (profileError) console.error('Profile creation warning:', profileError.message)
 
       sendEmail({ to: form.email, type: 'welcome', data: { name: fullName, email: form.email, role } }).catch(console.error)
       sendEmail({ to: form.email, type: 'new_listing_admin', data: { title: `New ${role} signup`, brand: 'New User', price: 0, condition: role, city: form.city, sellerName: fullName, sellerEmail: form.email, id: data.user.id } }).catch(console.error)
 
-      setUser({ id: data.user.id, email: data.user.email!, role, full_name: fullName })
+      setUser({ 
+        id: data.user.id, 
+        email: data.user.email!, 
+        role, 
+        full_name: fullName,
+        is_buyer: isBuyer,
+        is_seller: isSeller,
+        is_admin: false,
+        activeRole: isSeller ? 'seller' : 'buyer'
+      })
       toast.success('Account created successfully! Welcome to Attar Bazaar 🎉')
       window.location.href = role === 'seller' ? '/seller' : '/'
     } catch (err: any) {

@@ -15,7 +15,14 @@ export function ProductDetailClient({ perfume, mode }: { perfume: Perfume; mode:
   const images = perfume.images?.filter(Boolean) ?? []
 
   const addToCart = () => {
-    if (user?.role === 'seller') { toast.error('Sellers cannot purchase items. Please log out and log in with a Buyer account.'); return }
+    if (!user?.is_buyer) { 
+      if (user?.is_seller) {
+        toast.error('You currently have Seller access. To purchase items, please activate Buyer role on your account.');
+      } else {
+        toast.error('Please sign in to purchase items.');
+      }
+      return;
+    }
     for (let i = 0; i < qty; i++) addItem(perfume)
     toast.success(`${qty}× ${perfume.title} added to cart!`)
   }

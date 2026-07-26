@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/lib/store'
 import { ORDER_STATUS_LABEL, OrderStatus } from '@/lib/types'
-import { TrendingUp, Package, ShoppingBag, Clock, Loader2, Plus, Wifi } from 'lucide-react'
+import { TrendingUp, Package, ShoppingBag, Clock, Loader2, Plus, Wifi, ArrowRight } from 'lucide-react'
 
 export default function SellerDashboard() {
   const { user } = useAuthStore()
@@ -56,7 +56,14 @@ export default function SellerDashboard() {
     <div className="p-5 sm:p-8">
       <div className="flex items-center justify-between mb-8">
         <div><h1 className="text-3xl font-bold" style={{ color: '#F5F0E8', fontFamily: 'Georgia, serif' }}>Seller Dashboard</h1><p className="text-sm mt-1" style={{ color: '#A89F8F' }}>Real-time overview of your shop</p></div>
-        {liveUpdated && <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ background: 'rgba(37,211,102,0.15)', color: '#25D366' }}><Wifi size={12} /> Live update</span>}
+        <div className="flex items-center gap-3">
+          {liveUpdated && <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ background: 'rgba(37,211,102,0.15)', color: '#25D366' }}><Wifi size={12} /> Live update</span>}
+          {user?.is_buyer && (
+            <Link href="/" className="text-xs px-3 py-1.5 rounded-full border flex items-center gap-1.5" style={{ borderColor: 'rgba(201,168,76,0.3)', color: '#C9A84C' }}>
+              <ShoppingBag size={12} /> Buyer <ArrowRight size={12} />
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

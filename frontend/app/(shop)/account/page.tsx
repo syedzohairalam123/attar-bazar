@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/lib/store'
 import { ORDER_STATUS_LABEL, OrderStatus } from '@/lib/types'
-import { TrendingUp, Package, Loader2, User, ArrowRight, Sparkles, Wifi } from 'lucide-react'
+import { TrendingUp, Package, Loader2, User, ArrowRight, Sparkles, Wifi, Store } from 'lucide-react'
 
 const STATUS_BADGE: Record<OrderStatus, string> = {
   pending: 'badge-like-new', confirmed: 'badge-new', dispatched: 'text-blue-400 bg-blue-400/10 border border-blue-400/30 rounded-full px-2 py-0.5 text-xs',
@@ -68,12 +68,21 @@ export default function AccountPage() {
         <div className="glass-card rounded-2xl p-5 col-span-2 sm:col-span-1"><Package size={20} style={{ color: '#25D366' }} className="mb-3" /><p className="font-bold text-2xl" style={{ color: '#25D366', fontFamily: 'Georgia, serif' }}>{deliveredCount}</p><p className="text-[#A89F8F] text-sm mt-1">Delivered</p></div>
       </div>
 
-      {/* Become a Seller CTA — only shown to buyers */}
-      {user.role === 'buyer' && (
+      {/* Become a Seller CTA — only shown to users without seller role */}
+      {user.is_buyer && !user.is_seller && (
         <div className="glass-card rounded-2xl p-6 mb-8 flex flex-col sm:flex-row items-center gap-4" style={{ border: '1px solid rgba(201,168,76,0.3)' }}>
           <Sparkles size={28} style={{ color: '#C9A84C' }} className="flex-shrink-0" />
           <div className="flex-1 text-center sm:text-left"><p className="font-semibold" style={{ color: '#F5F0E8' }}>Want to sell your own perfumes?</p><p className="text-sm" style={{ color: '#A89F8F' }}>Get your own seller dashboard with inventory management and live sales tracking.</p></div>
-          <Link href="/sell" className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E' }}>Become a Seller <ArrowRight size={16} /></Link>
+          <Link href="/seller/setup" className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E' }}>Become a Seller <ArrowRight size={16} /></Link>
+        </div>
+      )}
+
+      {/* Switch to Seller CTA — shown to users with seller role */}
+      {user.is_buyer && user.is_seller && (
+        <div className="glass-card rounded-2xl p-6 mb-8 flex flex-col sm:flex-row items-center gap-4" style={{ border: '1px solid rgba(201,168,76,0.3)' }}>
+          <Store size={28} style={{ color: '#C9A84C' }} className="flex-shrink-0" />
+          <div className="flex-1 text-center sm:text-left"><p className="font-semibold" style={{ color: '#F5F0E8' }}>You have Seller access!</p><p className="text-sm" style={{ color: '#A89F8F' }}>Switch to your Seller Dashboard to manage your products and orders.</p></div>
+          <Link href="/seller" className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2 whitespace-nowrap border" style={{ borderColor: 'rgba(201,168,76,0.3)', color: '#C9A84C' }}>Switch to Seller <ArrowRight size={16} /></Link>
         </div>
       )}
 
