@@ -13,18 +13,38 @@ import toast from 'react-hot-toast'
 // that can create a listing, avoiding any chance of a duplicate/parallel
 // route collision.
 export default function SellLandingPage() {
-  const { user } = useAuthStore()
+  const { user, setUser } = useAuthStore()
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
 
+  const u = user as any
+
   const becomeSeller = async () => {
-    if (!user) { router.push('/auth/register?role=seller'); return }
-    if (user.role === 'seller' || user.role === 'admin') { router.push('/seller'); return }
+    if (!user) {
+      router.push('/auth/register?role=seller')
+      return
+    }
+
+    // Already a seller — go straight to dashboard
+    if (u?.is_seller || u?.role === 'seller' || u?.role === 'admin') {
+      router.push('/seller')
+      return
+    }
+
     setLoading(true)
     try {
-      const { error } = await supabase.from('profiles').update({ role: 'seller' }).eq('id', user.id)
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_seller: true, role: 'seller' })
+        .eq('id', user.id)
+
       if (error) throw error
+
+      if (setUser) {
+        setUser({ ...user, is_seller: true, role: 'seller' })
+      }
+
       toast.success('Welcome, seller! Redirecting to your dashboard...')
       window.location.href = '/seller' // full reload so middleware + AuthProvider pick up the new role immediately
     } catch (err: any) {
@@ -45,10 +65,11 @@ export default function SellLandingPage() {
         ))}
       </div>
 
-      <button onClick={becomeSeller} disabled={loading} className="px-10 py-4 rounded-2xl text-base font-semibold inline-flex items-center justify-center gap-3 disabled:opacity-60 transition-all" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E', boxShadow: '0 4px 20px rgba(201,168,76,0.3)' }}>
-        {loading ? <><Loader2 size={20} className="animate-spin" /> Setting up your shop...</> : <>{user ? 'Become a Seller' : 'Create Account & Start Selling'} <ArrowRight size={18} /></>}
+      <button onClick={becomeSeller} disabled={loading} className="px-10 py-4 rounded-2xl text-base font-semibold inline-flex items-center justify-center gap-3 disabled:opacity-60 transition-all cursor-pointer" style={{ background: 'linear-gradient(135deg,#C9A84C,#E8CC7A)', color: '#06040E', boxShadow: '0 4px 20px rgba(201,168,76,0.3)' }}>
+        {loading ? <><Loader2 size={20} className="animate-spin" /> Setting up your shop...</> : u?.is_seller ? <>Go to Seller Dashboard <ArrowRight size={18} /></> : user ? <>Become a Seller <ArrowRight size={18} /></> : <>Create Account & Start Selling <ArrowRight size={18} /></>}
       </button>
-      {user?.role === 'seller' && <p className="text-sm mt-4" style={{ color: '#25D366' }}><CheckCircle size={14} className="inline mr-1" /> You're already a seller — click above to go to your dashboard.</p>}
+
+      {u?.is_seller && <p className="text-sm mt-4 flex items-center justify-center gap-1.5" style={{ color: '#25D366' }}><CheckCircle size={14} /> You're already a seller — click above to go to your dashboard.</p>}
       {!user && <p className="text-sm mt-4" style={{ color: '#A89F8F' }}>Already have an account? <Link href="/auth/login" className="underline" style={{ color: '#C9A84C' }}>Sign in</Link> first.</p>}
     </div>
   )

@@ -48,7 +48,18 @@ export const useCartStore = create<CartStore>()(
 )
 
 // ─── AUTH (client-side mirror of the server session for instant UI reactivity) ──
-export type AuthUser = { id: string; email: string; role: string; full_name?: string | null } | null
+export type AuthUser = { 
+  id: string; 
+  email: string; 
+  role: string; // Legacy role field for backward compatibility
+  full_name?: string | null;
+  // Multi-role flags
+  is_buyer?: boolean;
+  is_seller?: boolean;
+  is_admin?: boolean;
+  // Active role: which interface the user is currently using
+  activeRole?: 'buyer' | 'seller' | 'admin';
+} | null
 
 type AuthStore = {
   user: AuthUser
@@ -56,6 +67,8 @@ type AuthStore = {
   setUser: (user: AuthUser) => void
   clearUser: () => void
   setHasHydrated: (v: boolean) => void
+  setActiveRole: (role: 'buyer' | 'seller' | 'admin') => void
+  updateUserRoles: (roles: { is_buyer?: boolean; is_seller?: boolean; is_admin?: boolean }) => void
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -66,6 +79,12 @@ export const useAuthStore = create<AuthStore>()(
       setUser: (user) => set({ user }),
       clearUser: () => set({ user: null }),
       setHasHydrated: (v) => set({ hasHydrated: v }),
+      setActiveRole: (role) => set((state) => ({ 
+        user: state.user ? { ...state.user, activeRole: role } : null 
+      })),
+      updateUserRoles: (roles) => set((state) => ({
+        user: state.user ? { ...state.user, ...roles } : null
+      })),
     }),
     {
       name: 'attar-auth',
